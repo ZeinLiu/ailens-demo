@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AILens</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f9f8f6;
+      --surface:   #ffffff;
+      --border:    #e5e4e0;
+      --text:      #111110;
+      --muted:     #888580;
+      --blue:      #4169e1;
+      --blue-light:#eef1fc;
+      --green:     #2d7a4f;
+      --green-bar: #3db870;
+      --purple:    #5b50d6;
+      --purple-bg: #f0effe;
+      --orange:    #c4522a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 52px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-logo { font-weight: 700; font-size: 16px; letter-spacing: -0.3px; cursor: pointer; }
+    .nav-links { display: flex; gap: 28px; align-items: center; font-size: 14px; }
+    .nav-links a { color: var(--muted); text-decoration: none; cursor: pointer; }
+    .nav-links a.active { color: var(--text); font-weight: 500; }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ── PAGES ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── INDEX PAGE ── */
+    .index-hero { padding: 52px 32px 36px; max-width: 860px; }
+    .index-label { font-family: monospace; font-size: 11px; letter-spacing: 0.08em; color: var(--blue); text-transform: uppercase; margin-bottom: 16px; }
+    .index-title { font-size: 36px; font-weight: 700; line-height: 1.15; letter-spacing: -0.5px; margin-bottom: 28px; }
+    .search-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .search-box {
+      display: flex; align-items: center; gap: 10px;
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 14px; background: var(--surface);
+      flex: 1; max-width: 480px;
+    }
+    .search-box input { border: none; outline: none; background: transparent; font-size: 14px; color: var(--text); width: 100%; }
+    .search-box input::placeholder { color: var(--muted); }
+    .result-count { font-family: monospace; font-size: 13px; color: var(--muted); }
+
+    .filter-row { display: flex; align-items: center; gap: 0; padding: 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 0; overflow-x: auto; }
+    .filter-tab { font-size: 13px; padding: 10px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+    .filter-tab.active { color: var(--text); font-weight: 600; border-bottom-color: var(--text); }
+    .filter-tab:hover { color: var(--text); }
+    .filter-divider { width: 1px; height: 16px; background: var(--border); margin: 0 8px; }
+
+    .diff-row { display: flex; align-items: center; gap: 0; padding: 10px 32px 0; }
+    .diff-label { font-family: monospace; font-size: 11px; color: var(--muted); margin-right: 16px; }
+    .diff-tab { font-size: 13px; padding: 4px 12px; cursor: pointer; color: var(--muted); border-radius: 4px; }
+    .diff-tab.active { color: var(--text); font-weight: 600; background: var(--surface); border: 1px solid var(--border); }
+    .diff-tab:hover { color: var(--text); }
+
+    .project-list { padding: 0 32px 60px; max-width: 860px; }
+    .project-item {
+      display: flex; align-items: flex-start; gap: 24px;
+      padding: 28px 0; border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .project-item:hover .project-title { color: var(--blue); }
+    .project-num { font-family: monospace; font-size: 13px; color: var(--muted); width: 24px; flex-shrink: 0; padding-top: 3px; }
+    .project-body { flex: 1; }
+    .project-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .project-title { font-size: 17px; font-weight: 600; letter-spacing: -0.2px; }
+    .diff-badge { font-size: 11px; font-family: monospace; padding: 2px 7px; border-radius: 4px; border: 1px solid; }
+    .diff-badge.beginner { color: var(--blue); border-color: #c5d0f7; background: var(--blue-light); }
+    .diff-badge.intermediate { color: #7a4f00; border-color: #f0d89a; background: #fdf6e3; }
+    .diff-badge.advanced { color: var(--orange); border-color: #f5c9b5; background: #fef2ec; }
+    .project-desc { font-size: 14px; color: var(--muted); line-height: 1.55; margin-bottom: 12px; }
+    .project-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .tool-chip { font-family: monospace; font-size: 12px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); }
+    .meta-dot { color: var(--border); }
+    .meta-time { font-family: monospace; font-size: 12px; color: var(--muted); }
+    .meta-steps { font-family: monospace; font-size: 12px; color: var(--muted); }
+    .local-badge { font-family: monospace; font-size: 11px; color: var(--green); background: #edf7f2; border: 1px solid #c2e8d2; padding: 2px 7px; border-radius: 4px; }
+
+    /* ── DETAIL PAGE ── */
+    .detail-wrap { max-width: 780px; padding: 0 32px 80px; }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; font-family: monospace; font-size: 11px; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; padding: 20px 0 28px; cursor: pointer; text-decoration: none; }
+    .back-link:hover { color: var(--text); }
+
+    .detail-header { margin-bottom: 24px; }
+    .detail-title-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+    .detail-num { font-family: monospace; font-size: 28px; font-weight: 700; color: var(--blue); }
+    .detail-title { font-size: 28px; font-weight: 700; letter-spacing: -0.4px; }
+    .detail-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .detail-actions { display: flex; gap: 10px; }
+    .btn-primary { background: var(--text); color: var(--bg); border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .btn-primary:hover { background: #333; }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-outline:hover { background: var(--surface); }
+
+    .depth-section { border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 28px; background: var(--surface); }
+    .depth-label { font-family: monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .depth-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+    .depth-tab { font-size: 13px; padding: 5px 14px; border-radius: 5px; cursor: pointer; border: 1px solid transparent; color: var(--muted); }
+    .depth-tab.active { background: var(--bg); border-color: var(--border); color: var(--text); font-weight: 500; }
+    .depth-tab:hover:not(.active) { color: var(--text); }
+    .depth-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+    .content-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+    .content-tab { font-size: 14px; padding: 10px 0; margin-right: 28px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .content-tab.active { color: var(--text); font-weight: 500; border-bottom-color: var(--text); }
+    .content-tab:hover { color: var(--text); }
+
+    /* What It Does tab */
+    .what-section { display: none; }
+    .what-section.active { display: block; }
+    .what-block { margin-bottom: 32px; }
+    .what-block-title { font-family: monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 12px; }
+    .what-para { font-size: 14px; color: #333; line-height: 1.7; margin-bottom: 10px; }
+    .use-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .use-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px; }
+    .use-card-scenario { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .use-card-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .pain-list { list-style: none; }
+    .pain-list li { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: #333; padding: 6px 0; border-bottom: 1px solid var(--border); line-height: 1.5; }
+    .pain-list li:last-child { border-bottom: none; }
+    .pain-list li::before { content: '—'; color: var(--muted); flex-shrink: 0; margin-top: 1px; }
+    .who-list { display: flex; flex-direction: column; gap: 8px; }
+    .who-item { display: flex; gap: 12px; align-items: flex-start; }
+    .who-role { font-size: 13px; font-weight: 600; min-width: 120px; flex-shrink: 0; }
+    .who-gain { font-size: 13px; color: var(--muted); }
+
+    /* Build It tab */
+    .build-section { display: none; }
+    .build-section.active { display: block; }
+    .progress-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .progress-label { font-family: monospace; font-size: 13px; color: var(--muted); }
+    .progress-pct { font-family: monospace; font-size: 13px; color: var(--muted); }
+    .progress-bar { height: 2px; background: var(--border); border-radius: 2px; margin-bottom: 28px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s ease; }
+
+    .step-list { display: flex; flex-direction: column; }
+    .step-item { border-bottom: 1px solid var(--border); }
+    .step-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 0; cursor: pointer; }
+    .step-header:hover .step-title { color: var(--blue); }
+    .step-left { display: flex; gap: 16px; align-items: flex-start; }
+    .step-num { font-family: monospace; font-size: 13px; color: var(--muted); width: 20px; flex-shrink: 0; padding-top: 2px; }
+    .step-info {}
+    .step-title { font-size: 15px; font-weight: 600; color: var(--blue); margin-bottom: 3px; }
+    .step-sub { font-size: 13px; color: var(--muted); }
+    .step-chevron { color: var(--muted); font-size: 14px; flex-shrink: 0; padding-top: 4px; transition: transform 0.2s; }
+    .step-item.open .step-chevron { transform: rotate(180deg); }
+
+    .step-body { display: none; padding: 0 0 20px 36px; }
+    .step-item.open .step-body { display: block; }
+    .step-body p { font-size: 14px; color: #333; line-height: 1.7; margin-bottom: 14px; }
+    .step-why { font-size: 13px; color: var(--muted); border-left: 2px solid var(--border); padding-left: 12px; margin-bottom: 14px; line-height: 1.6; }
+    .step-warn { font-size: 13px; color: var(--orange); background: #fef2ec; border: 1px solid #f5c9b5; border-radius: 5px; padding: 8px 12px; margin-bottom: 14px; line-height: 1.6; }
+
+    pre {
+      background: #1a1a18;
+      color: #e8e6e0;
+      border-radius: 6px;
+      padding: 16px 18px;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-x: auto;
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute; top: 10px; right: 12px;
+      font-family: monospace; font-size: 11px; color: #888;
+      background: #2a2a28; border: 1px solid #3a3a38;
+      border-radius: 4px; padding: 3px 8px; cursor: pointer;
+    }
+    .copy-btn:hover { color: #ccc; }
+    .code-comment { color: #666; }
+    .code-key { color: #7ec8a0; }
+    .code-str { color: #e6a96e; }
+    .code-fn { color: #82b4f5; }
+
+    .step-time { font-family: monospace; font-size: 12px; color: var(--muted); }
+
+    .time-remaining-card {
+      border: 1px solid var(--border); border-radius: 6px;
+      padding: 16px 20px; margin-top: 28px; background: var(--surface);
+    }
+    .time-remaining-label { font-family: monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .time-remaining-val { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 2px; }
+    .time-remaining-sub { font-size: 13px; color: var(--muted); }
+
+    .ask-claude-card {
+      border: 1px solid #ccc8f8; border-radius: 8px;
+      padding: 18px 20px; margin-top: 16px;
+      background: var(--purple-bg);
+    }
+    .ask-claude-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--purple); color: white;
+      border: none; border-radius: 6px; padding: 11px 20px;
+      font-size: 14px; font-weight: 500; cursor: pointer; width: 100%;
+      margin-bottom: 10px;
+    }
+    .ask-claude-btn:hover { background: #4a40c4; }
+    .ask-claude-desc { font-size: 13px; color: #6b60c0; line-height: 1.55; }
+
+    /* ── TRACKER PAGE ── */
+    .tracker-wrap { max-width: 780px; padding: 0 32px 80px; }
+    .tracker-header { padding: 40px 0 28px; }
+    .tracker-label { font-family: monospace; font-size: 11px; color: var(--blue); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+    .tracker-title { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 20px; }
+    .streak-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 16px; background: var(--surface); margin-bottom: 24px;
+    }
+    .streak-text { font-family: monospace; font-size: 15px; font-weight: 700; }
+    .streak-sub { font-family: monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 1px; }
+
+    .diff-filter { display: flex; align-items: center; gap: 0; margin-bottom: 28px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .diff-filter-label { font-family: monospace; font-size: 11px; color: var(--muted); text-transform: uppercase; margin-right: 16px; }
+    .diff-filter-tab { font-size: 14px; padding: 4px 14px; cursor: pointer; color: var(--muted); }
+    .diff-filter-tab.active { color: var(--text); font-weight: 700; }
+    .diff-filter-tab:hover { color: var(--text); }
+
+    .tracker-section { margin-bottom: 32px; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .section-title { font-family: monospace; font-size: 13px; font-weight: 700; }
+    .section-title.in-progress { color: var(--blue); }
+    .section-title.completed { color: var(--green); }
+    .section-count { font-family: monospace; font-size: 13px; color: var(--muted); }
+
+    .tracker-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 7px; padding: 16px 18px; margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .tracker-card:hover { border-color: #ccc; }
+    .tracker-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .tracker-card-num { font-family: monospace; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+    .tracker-card-title { font-size: 15px; font-weight: 600; }
+    .tracker-prog-bar { height: 2px; background: var(--border); border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
+    .tracker-prog-fill { height: 100%; border-radius: 2px; }
+    .tracker-prog-fill.in-progress { background: var(--blue); }
+    .tracker-prog-fill.completed { background: var(--green-bar); }
+    .tracker-prog-text { font-family: monospace; font-size: 12px; color: var(--muted); }
+
+    /* difficulty dots */
+    .diff-dot { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+    .diff-dot::before { content: '•'; font-size: 14px; }
+    .diff-dot.beginner { color: var(--blue); }
+    .diff-dot.intermediate { color: #b07e00; }
+    .diff-dot.advanced { color: var(--orange); }
+
+    /* ── UTILITIES ── */
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo" onclick="showPage('index')">AILens</div>
+  <div class="nav-links">
+    <a id="nav-index" class="active" onclick="showPage('index')">Index</a>
+    <a id="nav-tracker" onclick="showPage('tracker')">Tracker</a>
+    <a onclick="">log in</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     INDEX PAGE
+═══════════════════════════════════════════ -->
+<div id="page-index" class="page active fade-in">
+  <div class="index-hero">
+    <div class="index-label">A working index of AI projects</div>
+    <h1 class="index-title">Things you can build, run, and ship —<br>to actually understand how AI works.</h1>
+    <div class="search-row">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="#888" stroke-width="1.5"/><path d="m11 11 3 3" stroke="#888" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input type="text" placeholder="Search projects, tools, techniques" id="search-input" oninput="filterProjects()" />
+      </div>
+      <span class="result-count" id="result-count">09</span>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <div class="filter-tab active" onclick="setCategory(this,'All')">All</div>
+    <div class="filter-tab" onclick="setCategory(this,'RAG')">RAG</div>
+    <div class="filter-tab" onclick="setCategory(this,'Agents')">Agents</div>
+    <div class="filter-tab" onclick="setCategory(this,'Chatbots')">Chatbots</div>
+    <div class="filter-tab" onclick="setCategory(this,'Fine-tuning')">Fine-tuning</div>
+    <div class="filter-tab" onclick="setCategory(this,'Vision')">Vision</div>
+    <div class="filter-tab" onclick="setCategory(this,'Speech')">Speech</div>
+    <div class="filter-tab" onclick="setCategory(this,'Automation')">Automation</div>
+  </div>
+
+  <div style="padding: 10px 32px; display:flex; align-items:center; gap:0; border-bottom:1px solid var(--border);">
+    <span id="proj-count" style="font-family:monospace;font-size:12px;color:var(--muted);margin-right:24px;">09 PROJECTS</span>
+    <div class="diff-tab active" onclick="setDiff(this,'All')" style="font-size:13px;padding:4px 12px;cursor:pointer;font-weight:600;color:var(--text);">All</div>
+    <div class="diff-tab" onclick="setDiff(this,'Beginner')" style="font-size:13px;padding:4px 12px;cursor:pointer;color:var(--muted);">Beginner</div>
+    <div class="diff-tab" onclick="setDiff(this,'Intermediate')" style="font-size:13px;padding:4px 12px;cursor:pointer;color:var(--muted);">Intermediate</div>
+    <div class="diff-tab" onclick="setDiff(this,'Advanced')" style="font-size:13px;padding:4px 12px;cursor:pointer;color:var(--muted);">Advanced</div>
+  </div>
+
+  <div class="project-list" id="project-list"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     DETAIL PAGE
+═══════════════════════════════════════════ -->
+<div id="page-detail" class="page fade-in">
+  <div class="detail-wrap">
+    <a class="back-link" onclick="showPage('index')">← Back to Index</a>
+
+    <div class="detail-header">
+      <div class="detail-title-row">
+        <span class="detail-num" id="d-num">01</span>
+        <h1 class="detail-title" id="d-title">Document Q&A with citations</h1>
+        <span class="diff-badge beginner" id="d-badge">Beginner</span>
+      </div>
+      <div class="detail-meta" id="d-meta"></div>
+      <div class="detail-actions">
+        <button class="btn-primary" onclick="startBuilding()">Start Building →</button>
+        <button class="btn-outline" onclick="saveProject()">Save</button>
+      </div>
+    </div>
+
+    <div class="depth-section">
+      <div class="depth-label">Depth</div>
+      <div class="depth-tabs">
+        <div class="depth-tab active" onclick="setDepth(this,'beginner')">Beginner</div>
+        <div class="depth-tab" onclick="setDepth(this,'intermediate')">Intermediate</div>
+        <div class="depth-tab" onclick="setDepth(this,'advanced')">Advanced</div>
+      </div>
+      <div class="depth-desc" id="depth-desc">Local files, a single PDF, and a prebuilt retriever — you wire the pieces together and see it answer with citations.</div>
+    </div>
+
+    <div class="content-tabs">
+      <div class="content-tab" onclick="setContentTab(this,'what')">What It Does</div>
+      <div class="content-tab active" onclick="setContentTab(this,'build')">Build It</div>
+    </div>
+
+    <!-- WHAT IT DOES -->
+    <div class="what-section" id="tab-what">
+      <div class="what-block">
+        <div class="what-block-title">Overview</div>
+        <p class="what-para" id="w-overview"></p>
+      </div>
+      <div class="what-block">
+        <div class="what-block-title">Real-world uses</div>
+        <div class="use-grid" id="w-uses"></div>
+      </div>
+      <div class="what-block">
+        <div class="what-block-title">Pain points solved</div>
+        <ul class="pain-list" id="w-pains"></ul>
+      </div>
+      <div class="what-block">
+        <div class="what-block-title">Who benefits</div>
+        <div class="who-list" id="w-who"></div>
+      </div>
+    </div>
+
+    <!-- BUILD IT -->
+    <div class="build-section active" id="tab-build">
+      <div class="progress-row">
+        <span class="progress-label" id="prog-label">Step 0 of 6</span>
+        <span class="progress-pct" id="prog-pct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="step-list" id="step-list"></div>
+
+      <div class="time-remaining-card">
+        <div class="time-remaining-label">Time Remaining</div>
+        <div class="time-remaining-val" id="d-time">~3h</div>
+        <div class="time-remaining-sub" id="d-time-sub">of ~3h estimated</div>
+      </div>
+
+      <div class="ask-claude-card">
+        <button class="ask-claude-btn">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="9" rx="2" stroke="white" stroke-width="1.4"/><path d="M5 13l1.5-2h3L11 13" stroke="white" stroke-width="1.4"/></svg>
+          Stuck? Ask Claude
+        </button>
+        <div class="ask-claude-desc">Paste an error or describe where you're blocked — get an answer scoped to this step.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TRACKER PAGE
+═══════════════════════════════════════════ -->
+<div id="page-tracker" class="page fade-in">
+  <div class="tracker-wrap">
+    <div class="tracker-header">
+      <div class="tracker-label">Learning Tracker</div>
+      <h1 class="tracker-title">Your build queue, in motion.</h1>
+      <div class="streak-badge">
+        <span style="font-size:20px">🔥</span>
+        <div>
+          <div class="streak-text">3 day streak</div>
+          <div class="streak-sub">Keep it going</div>
+        </div>
+      </div>
+      <div class="diff-filter">
+        <span class="diff-filter-label">Difficulty</span>
+        <div class="diff-filter-tab active" onclick="setTrackerFilter(this,'All')">All</div>
+        <div class="diff-filter-tab" onclick="setTrackerFilter(this,'Beginner')">Beginner</div>
+        <div class="diff-filter-tab" onclick="setTrackerFilter(this,'Intermediate')">Intermediate</div>
+        <div class="diff-filter-tab" onclick="setTrackerFilter(this,'Advanced')">Advanced</div>
+      </div>
+    </div>
+
+    <div id="tracker-not-started" class="tracker-section"></div>
+    <div id="tracker-in-progress" class="tracker-section"></div>
+    <div id="tracker-completed" class="tracker-section"></div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────
+const PROJECTS = [
+  {
+    id: 1, num: '01', title: 'Document Q&A with citations', difficulty: 'Beginner',
+    categories: ['RAG'],
+    desc: 'Chunk PDFs, embed, retrieve, and answer grounded in your own sources — runs fully local.',
+    tools: ['Python', 'LangChain', 'Chroma'], time: '~3h', steps: 6, isLocal: true,
+    depthDesc: {
+      beginner: 'Local files, a single PDF, and a prebuilt retriever — you wire the pieces together and see it answer with citations.',
+      intermediate: 'Focus on chunking strategy, retrieval tuning, and wrapping the chain as a reusable API endpoint.',
+      advanced: 'Hybrid search, reranking, semantic chunking, and production cost/latency model.'
+    },
+    overview: 'Takes a folder of PDF documents, splits them into overlapping chunks, converts each chunk into a vector embedding stored in a local Chroma database, and answers plain-English questions grounded only in your documents — with citations back to the exact source.',
+    uses: [
+      { scenario: 'Law firm knowledge base', desc: 'Lawyers query 500 case files in plain English and get cited answers with exact document and page.' },
+      { scenario: 'HR policy Q&A', desc: 'Staff ask "how many sick days do I get?" and receive a cited answer from the employee handbook.' },
+      { scenario: 'Academic research', desc: 'Query 50 papers at once, get cited synthesis without reading everything.' },
+      { scenario: 'Customer support', desc: 'Ground your support bot in product docs only — no hallucinated features.' },
+    ],
+    pains: ['Ctrl+F only finds exact strings — you need concept-level search', 'Generic LLMs will invent answers when they don\'t know', 'Reading 500 pages to find one answer costs hours', 'External SaaS sends your sensitive docs to third-party servers'],
+    who: [
+      { role: 'Researchers', gain: 'Synthesise literature without reading everything' },
+      { role: 'Legal teams', gain: 'Find precedents across case library in seconds' },
+      { role: 'Support teams', gain: 'Answer tickets grounded in product docs only' },
+      { role: 'Product managers', gain: 'Instant answers from specs and PRDs' },
+    ],
+    stepsData: {
+      beginner: [
+        { title: 'Set up the environment', sub: 'Install Python deps and load your PDF into the project.',
+          body: 'Install the three libraries this project needs. Open Terminal and run the command below. Each library handles one job: langchain orchestrates the pipeline, chromadb stores your vectors locally, pypdf reads PDF files.',
+          code: `pip install langchain-community langchain-openai chromadb pypdf`,
+          why: 'Libraries are pre-built tools so you don\'t write everything from scratch — like downloading apps before using them.',
+          warn: 'You also need an OpenAI API key. Get one at platform.openai.com, then run: export OPENAI_API_KEY="sk-..."',
+          time: '~15 min' },
+        { title: 'Load and split the document', sub: 'Read the PDF and break it into overlapping chunks.',
+          body: 'Create a file called ingest.py and add the code below. This loads your PDF and splits it into chunks of 1000 characters with 200-character overlap so context isn\'t lost between chunks.',
+          code: `from langchain_community.document_loaders import PyPDFLoader\nfrom langchain.text_splitter import RecursiveCharacterTextSplitter\n\nloader = PyPDFLoader("your-document.pdf")\npages = loader.load()\n\nsplitter = RecursiveCharacterTextSplitter(\n    chunk_size=1000, chunk_overlap=200\n)\nchunks = splitter.split_documents(pages)\nprint(f"Created {len(chunks)} chunks")`,
+          why: 'Splitting into chunks means the AI finds the relevant section, not the whole document. Overlap prevents cutting mid-sentence.',
+          warn: null, time: '~20 min' },
+        { title: 'Embed and index the chunks', sub: 'Turn each chunk into a vector and store it in Chroma.',
+          body: 'Each chunk is embedded into a vector and written to a local Chroma collection. This index is what makes retrieval fast — build it once, query it many times.',
+          code: `from langchain_community.vectorstores import Chroma\nfrom langchain_openai import OpenAIEmbeddings\n\nembeddings = OpenAIEmbeddings()\ndb = Chroma.from_documents(\n    documents=chunks,\n    embedding=embeddings,\n    persist_directory="./chroma",\n)\ndb.persist()\nprint(f"Indexed {len(chunks)} chunks")`,
+          why: 'Embedding converts text into numbers that capture meaning. Similar meanings → similar numbers → fast retrieval.',
+          warn: null, time: '~15 min' },
+        { title: 'Build the retriever', sub: 'Fetch the top-k most relevant chunks for a query.',
+          body: 'The retriever takes a question, converts it to a vector, and finds the most similar chunks in your database. Add this to a new file called query.py.',
+          code: `from langchain_community.vectorstores import Chroma\nfrom langchain_openai import OpenAIEmbeddings\n\ndb = Chroma(\n    persist_directory="./chroma",\n    embedding_function=OpenAIEmbeddings()\n)\nretriever = db.as_retriever(search_kwargs={"k": 4})\n\n# Test it\nresults = retriever.invoke("What is the refund policy?")\nfor r in results:\n    print(r.page_content[:200])`,
+          why: 'k=4 means fetch 4 chunks. More chunks = more context but higher cost. Start with 4 and tune.',
+          warn: null, time: '~15 min' },
+        { title: 'Wire up the Q&A chain', sub: 'Pass retrieved context to the model and return citations.',
+          body: 'Now connect the retriever to an LLM. The chain automatically formats retrieved chunks as context and returns the source document alongside the answer.',
+          code: `from langchain_openai import ChatOpenAI\nfrom langchain.chains import RetrievalQAWithSourcesChain\n\nllm = ChatOpenAI(model="gpt-4o-mini", temperature=0)\nchain = RetrievalQAWithSourcesChain.from_chain_type(\n    llm=llm, retriever=retriever\n)\n\nresult = chain.invoke({"question": "What is the refund policy?"})\nprint("Answer:", result["answer"])\nprint("Source:", result["sources"])`,
+          why: 'temperature=0 means the model won\'t guess — it sticks to the context provided.',
+          warn: null, time: '~20 min' },
+        { title: 'Ask questions & verify sources', sub: 'Run a query and click through to the cited passages.',
+          body: 'Run the full pipeline. First ingest your document, then ask questions. Test with questions you know the answers to — verify the citation points to the right page.',
+          code: `# Terminal — run in order:\npython ingest.py       # builds the vector database\npython query.py        # asks a question\n\n# Try these test questions:\n# 1. Ask something clearly in the doc → expect a cited answer\n# 2. Ask something NOT in the doc → expect "I don't know"\n# 3. Ask the same question twice → expect the same answer`,
+          why: null,
+          warn: 'If the model answers questions that aren\'t in your doc, add this to your prompt: "Answer only from the provided context. If not found, say I don\'t have that information."',
+          time: '~15 min' },
+      ]
+    }
+  },
+  { id: 2, num: '02', title: 'An agent that uses tools', difficulty: 'Advanced', categories: ['Agents'], desc: 'Build a ReAct loop that calls search, a calculator, and APIs, with tool routing you control.', tools: ['Python', 'OpenAI'], time: '~5h', steps: 8, isLocal: false },
+  { id: 3, num: '03', title: 'Deploy a streaming chatbot', difficulty: 'Beginner', categories: ['Chatbots'], desc: 'A chat UI with streaming output and memory, shipped live with a single command.', tools: ['Next.js', 'Vercel'], time: '~2h', steps: 5, isLocal: false },
+  { id: 4, num: '04', title: 'Fine-tune a small model', difficulty: 'Advanced', categories: ['Fine-tuning'], desc: 'Prepare a dataset, train with LoRA, and evaluate intent classification accuracy.', tools: ['PyTorch', 'PEFT'], time: '~6h', steps: 9, isLocal: false },
+  { id: 5, num: '05', title: 'A multimodal vision assistant', difficulty: 'Intermediate', categories: ['Vision'], desc: 'Wire up a vision model for screenshot Q&A, chart reading, and OCR — wrapped as an API.', tools: ['VLM', 'FastAPI'], time: '~4h', steps: 7, isLocal: false },
+  { id: 6, num: '06', title: 'Transcribe & summarize meetings', difficulty: 'Intermediate', categories: ['Speech'], desc: 'Transcribe audio with Whisper, then turn it into structured notes and action items.', tools: ['Whisper', 'Python'], time: '~3h', steps: 6, isLocal: false },
+  { id: 7, num: '07', title: 'Automate a repetitive workflow', difficulty: 'Beginner', categories: ['Automation'], desc: 'Chain scrape, summarize, and notify into one scheduled flow — no heavy backend.', tools: ['n8n', 'Webhook'], time: '~2h', steps: 5, isLocal: false },
+  { id: 8, num: '08', title: 'Semantic search over your docs', difficulty: 'Intermediate', categories: ['RAG'], desc: 'Compare keyword vs. vector retrieval, add reranking, and deploy it as a service.', tools: ['Embeddings', 'Qdrant'], time: '~4h', steps: 7, isLocal: false },
+  { id: 9, num: '09', title: 'Build a prompt eval set', difficulty: 'Intermediate', categories: ['Agents'], desc: 'Create a graded test set and scoring rules to compare prompts and models quantitatively.', tools: ['Python', 'Pytest'], time: '~3h', steps: 6, isLocal: false },
+];
+
+const TRACKER_DATA = {
+  notStarted: [3, 7, 4],
+  inProgress: [1, 5, 2],
+  completed: [8, 6],
+  progress: { 1: 3, 5: 4, 2: 2, 8: 7, 6: 6 }
+};
+
+// ── STATE ──
+let currentProject = PROJECTS[0];
+let currentDepth = 'beginner';
+let completedSteps = new Set();
+let activeCategory = 'All';
+let activeDiff = 'All';
+
+// ── INDEX ──
+function renderIndex() {
+  const list = document.getElementById('project-list');
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const filtered = PROJECTS.filter(p => {
+    const catMatch = activeCategory === 'All' || p.categories.includes(activeCategory);
+    const diffMatch = activeDiff === 'All' || p.difficulty === activeDiff;
+    const searchMatch = !search || p.title.toLowerCase().includes(search) || p.tools.join(' ').toLowerCase().includes(search) || p.desc.toLowerCase().includes(search);
+    return catMatch && diffMatch && searchMatch;
+  });
+  document.getElementById('result-count').textContent = String(filtered.length).padStart(2,'0');
+  document.getElementById('proj-count').textContent = `${String(filtered.length).padStart(2,'0')} PROJECTS`;
+  list.innerHTML = filtered.map(p => `
+    <div class="project-item" onclick="openProject(${p.id})">
+      <div class="project-num">${p.num}</div>
+      <div class="project-body">
+        <div class="project-header">
+          <span class="project-title">${p.title}</span>
+          <span class="diff-badge ${p.difficulty.toLowerCase()}">${p.difficulty}</span>
+          ${p.isLocal ? '<span class="local-badge">local</span>' : ''}
+        </div>
+        <div class="project-desc">${p.desc}</div>
+        <div class="project-meta">
+          ${p.tools.map(t => `<span class="tool-chip">${t}</span>`).join('')}
+          <span class="meta-dot">·</span>
+          <span class="meta-time">${p.time}</span>
+          <span class="meta-dot">·</span>
+          <span class="meta-steps">${p.steps} steps</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function filterProjects() { renderIndex(); }
+function setCategory(el, val) {
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active'); activeCategory = val; renderIndex();
+}
+function setDiff(el, val) {
+  document.querySelectorAll('.diff-tab').forEach(t => { t.classList.remove('active'); t.style.color='var(--muted)'; t.style.fontWeight=''; });
+  el.classList.add('active'); el.style.color='var(--text)'; el.style.fontWeight='600';
+  activeDiff = val; renderIndex();
+}
+
+// ── DETAIL ──
+function openProject(id) {
+  currentProject = PROJECTS.find(p => p.id === id);
+  completedSteps.clear();
+  currentDepth = 'beginner';
+  renderDetail();
+  showPage('detail');
+}
+
+function renderDetail() {
+  const p = currentProject;
+  document.getElementById('d-num').textContent = p.num;
+  document.getElementById('d-title').textContent = p.title;
+  const badge = document.getElementById('d-badge');
+  badge.textContent = p.difficulty;
+  badge.className = `diff-badge ${p.difficulty.toLowerCase()}`;
+  document.getElementById('d-meta').innerHTML = p.tools.map(t => `<span class="tool-chip">${t}</span>`).join('') +
+    `<span class="meta-dot">·</span><span class="meta-time">${p.time}</span><span class="meta-dot">·</span><span class="meta-steps">${p.steps} steps</span>`;
+  document.getElementById('d-time').textContent = p.time;
+  document.getElementById('d-time-sub').textContent = `of ${p.time} estimated`;
+
+  if (p.depthDesc) document.getElementById('depth-desc').textContent = p.depthDesc[currentDepth];
+  renderWhatItDoes();
+  renderSteps();
+}
+
+function renderWhatItDoes() {
+  const p = currentProject;
+  if (!p.overview) return;
+  document.getElementById('w-overview').textContent = p.overview;
+  document.getElementById('w-uses').innerHTML = (p.uses||[]).map(u => `<div class="use-card"><div class="use-card-scenario">${u.scenario}</div><div class="use-card-desc">${u.desc}</div></div>`).join('');
+  document.getElementById('w-pains').innerHTML = (p.pains||[]).map(pain => `<li>${pain}</li>`).join('');
+  document.getElementById('w-who').innerHTML = (p.who||[]).map(w => `<div class="who-item"><div class="who-role">${w.role}</div><div class="who-gain">${w.gain}</div></div>`).join('');
+}
+
+function renderSteps() {
+  const p = currentProject;
+  const steps = p.stepsData ? p.stepsData[currentDepth] || p.stepsData.beginner : null;
+  const list = document.getElementById('step-list');
+  const total = p.steps;
+  const done = completedSteps.size;
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('prog-label').textContent = `Step ${done} of ${total}`;
+  document.getElementById('prog-pct').textContent = `${pct}%`;
+  document.getElementById('prog-fill').style.width = pct + '%';
+
+  if (!steps) {
+    list.innerHTML = Array.from({length: total}, (_,i) => `
+      <div class="step-item" id="step-${i}">
+        <div class="step-header" onclick="toggleStep(${i})">
+          <div class="step-left">
+            <span class="step-num">${String(i+1).padStart(2,'0')}</span>
+            <div class="step-info">
+              <div class="step-title">Step ${i+1}</div>
+              <div class="step-sub">Click to expand</div>
+            </div>
+          </div>
+          <span class="step-chevron">∨</span>
+        </div>
+      </div>`).join('');
+    return;
+  }
+
+  list.innerHTML = steps.map((s, i) => `
+    <div class="step-item ${i===2?'open':''}" id="step-${i}">
+      <div class="step-header" onclick="toggleStep(${i})">
+        <div class="step-left">
+          <span class="step-num">${String(i+1).padStart(2,'0')}</span>
+          <div class="step-info">
+            <div class="step-title">${s.title}</div>
+            <div class="step-sub">${s.sub}</div>
+          </div>
+        </div>
+        <span class="step-chevron">∨</span>
+      </div>
+      <div class="step-body">
+        <p>${s.body}</p>
+        ${s.why ? `<div class="step-why">${s.why}</div>` : ''}
+        ${s.warn ? `<div class="step-warn">⚠ ${s.warn}</div>` : ''}
+        ${s.code ? `<pre><button class="copy-btn" onclick="copyCode(this)">copy</button>${escHtml(s.code)}</pre>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+          <span class="step-time">${s.time}</span>
+          <button onclick="markDone(${i})" id="done-btn-${i}" style="font-family:monospace;font-size:12px;color:var(--blue);background:none;border:none;cursor:pointer;padding:0;">
+            ${completedSteps.has(i) ? '✓ Done' : 'Mark done →'}
+          </button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleStep(i) {
+  const el = document.getElementById('step-' + i);
+  el.classList.toggle('open');
+}
+
+function markDone(i) {
+  completedSteps.has(i) ? completedSteps.delete(i) : completedSteps.add(i);
+  renderSteps();
+  // re-open the step
+  const el = document.getElementById('step-' + i);
+  if (el) el.classList.add('open');
+}
+
+function copyCode(btn) {
+  const code = btn.parentElement.textContent.replace('copy','').trim();
+  navigator.clipboard.writeText(code).then(() => { btn.textContent = 'copied!'; setTimeout(() => btn.textContent = 'copy', 2000); });
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function setDepth(el, depth) {
+  document.querySelectorAll('.depth-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentDepth = depth;
+  if (currentProject.depthDesc) document.getElementById('depth-desc').textContent = currentProject.depthDesc[depth];
+  completedSteps.clear();
+  renderSteps();
+}
+
+function setContentTab(el, tab) {
+  document.querySelectorAll('.content-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-what').classList.toggle('active', tab === 'what');
+  document.getElementById('tab-build').classList.toggle('active', tab === 'build');
+}
+
+function startBuilding() {
+  setContentTab(document.querySelectorAll('.content-tab')[1], 'build');
+  document.getElementById('step-0')?.classList.add('open');
+}
+function saveProject() { alert('Saved to Tracker!'); }
+
+// ── TRACKER ──
+function renderTracker() {
+  const sections = [
+    { id: 'tracker-not-started', key: 'notStarted', label: 'Not Started', cls: '' },
+    { id: 'tracker-in-progress', key: 'inProgress', label: 'In Progress', cls: 'in-progress' },
+    { id: 'tracker-completed', key: 'completed', label: 'Completed', cls: 'completed' },
+  ];
+  sections.forEach(s => {
+    const ids = TRACKER_DATA[s.key];
+    const el = document.getElementById(s.id);
+    const cards = ids.map(id => {
+      const p = PROJECTS.find(x => x.id === id);
+      const prog = TRACKER_DATA.progress[id] || 0;
+      const pct = Math.round((prog / p.steps) * 100);
+      const isComplete = s.key === 'completed';
+      const isProgress = s.key === 'inProgress';
+      const fillClass = isComplete ? 'completed' : isProgress ? 'in-progress' : '';
+      const progText = isComplete ? `Complete · ${p.steps}/${p.steps}` : `Step ${prog} of ${p.steps}`;
+      return `<div class="tracker-card" onclick="openProject(${p.id})">
+        <div class="tracker-card-top">
+          <div>
+            <div class="tracker-card-num">${p.num}</div>
+            <div class="tracker-card-title">${p.title}</div>
+          </div>
+          <div class="diff-dot ${p.difficulty.toLowerCase()}">${p.difficulty}</div>
+        </div>
+        <div class="tracker-prog-bar"><div class="tracker-prog-fill ${fillClass}" style="width:${pct}%"></div></div>
+        <div class="tracker-prog-text">${progText}</div>
+      </div>`;
+    }).join('');
+    el.innerHTML = `<div class="section-header">
+      <span class="section-title ${s.cls}">${s.label}</span>
+      <span class="section-count">${String(ids.length).padStart(2,'0')}</span>
+    </div>${cards}`;
+  });
+}
+
+function setTrackerFilter(el, val) {
+  document.querySelectorAll('.diff-filter-tab').forEach(t => { t.classList.remove('active'); });
+  el.classList.add('active');
+}
+
+// ── NAVIGATION ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  const navEl = document.getElementById('nav-' + name);
+  if (navEl) navEl.classList.add('active');
+  window.scrollTo(0, 0);
+  if (name === 'tracker') renderTracker();
+}
+
+// ── INIT ──
+renderIndex();
+</script>
+</body>
+</html>
